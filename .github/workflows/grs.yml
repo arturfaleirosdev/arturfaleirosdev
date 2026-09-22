@@ -34,9 +34,29 @@ jobs:
 
       - name: Commit cards
         run: |
+          set -e
+          BRANCH=${{ github.ref_name }}
+
+          # guarda os cards gerados fora da árvore do git
+          mkdir -p /tmp/cards
+          cp profile/*.svg /tmp/cards/
+
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
+
+          # sincroniza com o estado atual do remoto
+          git fetch origin "$BRANCH"
+          git reset --hard "origin/$BRANCH"
+
+          # devolve os cards e commita
+          mkdir -p profile
+          cp /tmp/cards/*.svg profile/
           git add profile/*.svg
-          git commit -m "Update README cards" || exit 0
-          git pull --rebase --autostash origin ${{ github.ref_name }}
-          git push origin HEAD:${{ github.ref_name }}
+
+          if git diff --cached --quiet; then
+            echo "Nenhuma mudança nos cards."
+            exit 0
+          fi
+
+          git commit -m "Update README cards"
+          git push origin "HEAD:$BRANCH"
